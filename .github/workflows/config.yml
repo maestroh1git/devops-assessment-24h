@@ -52,7 +52,8 @@ jobs:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
     needs: lint-and-test
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
+    environment: fincra-deployment
     
     outputs:
       image-tag: ${{ steps.image-info.outputs.image-tag }}
