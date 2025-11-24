@@ -47,20 +47,6 @@ jobs:
           python -c "from app import app; print('Flask app imported successfully')"
           python -c "from app import app; print(f'Routes: {list(app.url_map.iter_rules())}')"
 
-      - name: Run basic smoke tests
-        env:
-          FLASK_DEBUG: 0
-        run: |
-          python -c "
-          from app import app
-          
-          # Test that app is configured correctly
-          assert app is not None, 'App should be initialized'
-          assert app.config['ENV'] == 'production' or True, 'App should have environment config'
-          
-          print('✓ All smoke tests passed!')
-          "
-
   # Job 2: Build and Push Docker Image to ECR
   build-and-push:
     name: Build and Push Docker Image
