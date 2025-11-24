@@ -3,6 +3,5 @@ cdk.out/
 dist/
 coverage/
 .DS_Store
-package-lock.json
 *.tsbuildinfo
 
