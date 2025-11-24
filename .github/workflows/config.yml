@@ -48,6 +48,8 @@ jobs:
           python -c "from app import app; print(f'Routes: {list(app.url_map.iter_rules())}')"
 
       - name: Run basic smoke tests
+        env:
+          FLASK_DEBUG: 0
         run: |
           python -c "
           from app import app
