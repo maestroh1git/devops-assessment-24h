@@ -111,7 +111,8 @@ jobs:
         run: |
           echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "image-uri=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
-    # Job 3: Deploy Infrastructure with AWS CDK
+  
+  # Job 3: Deploy Infrastructure with AWS CDK
   deploy-infrastructure:
     name: Deploy AWS Infrastructure
     runs-on: ubuntu-latest
@@ -121,7 +122,7 @@ jobs:
     
     env:
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      AWS_REGION: ${{ env.AWS_REGION }}
+      AWS_REGION: us-east-1
     
     defaults:
       run:
