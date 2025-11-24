@@ -111,3 +111,72 @@ jobs:
         run: |
           echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "image-uri=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+    # Job 3: Deploy Infrastructure with AWS CDK
+  deploy-infrastructure:
+    name: Deploy AWS Infrastructure
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    environment: fincra-deployment
+    
+    env:
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      AWS_REGION: ${{ env.AWS_REGION }}
+    
+    defaults:
+      run:
+        working-directory: cdk
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: cdk/package-lock.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install AWS CDK CLI
+        run: npm install -g aws-cdk@latest
+
+      - name: Install CDK dependencies
+        run: npm ci
+
+      - name: CDK Bootstrap (if needed)
+        run: |
+          # Only bootstrap if not already done
+          cdk bootstrap aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ env.AWS_REGION }} || echo "Already bootstrapped"
+
+      - name: CDK Synthesize
+        run: |
+          echo "Synthesizing CDK stacks..."
+          cdk synth --all
+          echo "✓ CDK synthesis completed successfully!"
+
+      - name: CDK Diff
+        run: |
+          echo "Checking for infrastructure changes..."
+          cdk diff --all || true
+
+      - name: CDK Deploy
+        run: |
+          echo "Deploying infrastructure stacks..."
+          cdk deploy --all --require-approval never --verbose
+          echo "✓ Infrastructure deployment completed!"
+
+      - name: Get stack outputs
+        run: |
+          echo "Fetching stack outputs..."
+          aws cloudformation describe-stacks \
+            --stack-name FincraEksStack \
+            --query 'Stacks[0].Outputs' \
+            --region ${{ env.AWS_REGION }} || echo "Stack outputs not yet available"
