@@ -139,7 +139,7 @@ export class EksStack extends cdk.Stack {
         value: mastersRole.roleArn,
         description: 'IAM role ARN for cluster admin access',
         exportName: 'FincraMastersRoleArn',
-      });qqqqqq
+      });
 
     new cdk.CfnOutput(this, 'ConfigCommand', {
       value: `aws eks update-kubeconfig --name ${this.cluster.clusterName} --region ${this.region}`,
