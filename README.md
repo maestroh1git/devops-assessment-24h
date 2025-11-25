@@ -27,6 +27,8 @@ This project demonstrates Infrastructure as Code (IaC) and CI/CD practices for d
     ↓  
 11. See: `Hello, from Fincra!`
 
+![Architecture Diagram](architecture.png)
+
 ```
 DEVELOPER                 AWS CLOUD                      USER
 
