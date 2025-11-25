@@ -178,6 +178,7 @@ export class EksStack extends cdk.Stack {
             'ec2:DescribeInstances',
             'ec2:DescribeNetworkInterfaces',
             'ec2:DescribeTags',
+            'ec2:GetSecurityGroupsForVpc',
             'ec2:GetCoipPoolUsage',
             'ec2:DescribeCoipPools',
             'elasticloadbalancing:DescribeLoadBalancers',
