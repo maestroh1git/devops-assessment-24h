@@ -74,7 +74,7 @@ export class VpcStack extends cdk.Stack {
     );
 
     // Tag the VPC for EKS discovery
-    cdk.Tags.of(this.vpc).add('kubernetes.io/cluster/fincra-cluster', 'shared');
+    cdk.Tags.of(this.vpc).add('kubernetes.io/cluster/fincra-cluster_v1', 'shared');
 
     // Outputs
     new cdk.CfnOutput(this, 'VpcId', {
