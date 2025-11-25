@@ -12,7 +12,7 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: fincra-app
-  EKS_CLUSTER_NAME: fincra-cluster
+  EKS_CLUSTER_NAME: fincra-cluster_v1
   KUBECTL_VERSION: v1.32.0
   KUSTOMIZE_VERSION: v5.2.1
 
@@ -184,3 +184,117 @@ jobs:
             --stack-name FincraEksStack \
             --query 'Stacks[0].Outputs' \
             --region ${{ env.AWS_REGION }} || echo "Stack outputs not yet available"
+
+  # Job 4: Deploy Application to EKS
+  deploy-application:
+    name: Deploy Application to EKS
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-infrastructure]
+    if: github.ref == 'refs/heads/main'
+    environment: fincra-deployment
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: ${{ env.KUBECTL_VERSION }}
+
+      - name: Install Kustomize
+        run: |
+          curl -sfLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${{ env.KUSTOMIZE_VERSION }}/kustomize_${{ env.KUSTOMIZE_VERSION }}_linux_amd64.tar.gz
+          tar xzf kustomize.tar.gz
+          sudo mv kustomize /usr/local/bin/
+          kustomize version
+
+      - name: Update kubeconfig
+        run: |
+          echo "Configuring kubectl for EKS cluster..."
+          aws eks update-kubeconfig \
+            --name ${{ env.EKS_CLUSTER_NAME }} \
+            --region ${{ env.AWS_REGION }}
+          
+          echo "✓ Kubeconfig updated successfully!"
+
+      - name: Verify cluster access
+        run: |
+          echo "Verifying cluster connectivity..."
+          kubectl cluster-info
+          kubectl get nodes || echo "No nodes yet (Fargate will create them on demand)"
+
+      - name: Update image reference in manifests
+        env:
+          IMAGE_URI: ${{ needs.build-and-push.outputs.image-uri }}
+        run: |
+          echo "Updating image reference to: $IMAGE_URI"
+          cd k8s
+          
+          # Update deployment.yaml with actual image URI
+          sed -i "s|ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/fincra-app:latest|$IMAGE_URI|g" deployment.yaml
+          
+          echo "✓ Image reference updated!"
+
+      - name: Deploy to EKS using Kustomize
+        run: |
+          echo "Deploying application to EKS..."
+          cd k8s
+          
+          # Build and apply Kustomize resources
+          kustomize build . | kubectl apply -f -
+          
+          echo "✓ Kubernetes resources applied successfully!"
+
+      - name: Wait for deployment rollout
+        run: |
+          echo "Waiting for deployment to complete..."
+          kubectl rollout status deployment/fincra-app -n default --timeout=5m || echo "Deployment is still in progress..."
+
+      - name: Verify deployment
+        run: |
+          echo "=== Deployment Status ==="
+          kubectl get deployments -n default
+          
+          echo ""
+          echo "=== Pods Status ==="
+          kubectl get pods -n default -l app=fincra-app
+          
+          echo ""
+          echo "=== Service Status ==="
+          kubectl get svc -n default
+          
+          echo ""
+          echo "=== Ingress Status ==="
+          kubectl get ingress -n default
+
+      - name: Get Application Load Balancer URL
+        run: |
+          echo "Fetching ALB URL (this may take a few minutes to provision)..."
+          
+          # Wait up to 5 minutes for ALB to be provisioned
+          for i in {1..30}; do
+            ALB_URL=$(kubectl get ingress fincra-app-ingress -n default -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+            
+            if [ -n "$ALB_URL" ]; then
+              echo "✓ Application Load Balancer provisioned!"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "🌐 Application URL: http://$ALB_URL"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              break
+            fi
+            
+            echo "Waiting for ALB to be provisioned... (attempt $i/30)"
+            sleep 10
+          done
+          
+          if [ -z "$ALB_URL" ]; then
+            echo "⚠️  ALB not yet available. Check ingress status with: kubectl describe ingress fincra-app-ingress -n default"
+          fi

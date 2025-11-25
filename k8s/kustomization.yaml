@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: default
+
+resources:
+- deployment.yaml
+- service.yaml
+- ingress.yaml
+
+
+commonAnnotations:
+  managed-by: github-actions
+  project: fincra-devops-assessment
+
+images:
+- name: ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/fincra-app
+  newTag: latest
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/component: web-server
+    app.kubernetes.io/instance: fincra-app-v1
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: fincra-app

@@ -106,7 +106,7 @@ DEVELOPER                 AWS CLOUD                      USER
     
 ### Assumptions
     
-    1. AWS account has sufficient permissions for EKS, VPC, EC2, ECR
+    1. AWS account has sufficient permissions for EKS, VPC, EC2, ECR, STS
     2. GitHub Actions has AWS credentials configured
     3. Single region deployment (us-east-1)
     4. Using Fargate for serverless compute
@@ -132,3 +132,4 @@ DEVELOPER                 AWS CLOUD                      USER
 ### Resources
 
 - Amazon EKS using CDK (TypeScript) reference implementation: https://github.com/aws-samples/amazon-eks-using-cdk-typescript
+- AWS Reinvent Trivia Game: https://github.com/aws-samples/aws-reinvent-trivia-game
