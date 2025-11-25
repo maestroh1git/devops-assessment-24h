@@ -24,10 +24,10 @@ export class EksStack extends cdk.Stack {
       ],
     });
 
-    // // Create IAM role for cluster admin access (masters role)
-    // const mastersRole = new iam.Role(this, 'ClusterAdminRole', {
-    //   assumedBy: new iam.AccountRootPrincipal(),
-    // });
+    // Create IAM role for cluster admin access (masters role)
+    const mastersRole = new iam.Role(this, 'ClusterAdminRole', {
+      assumedBy: new iam.AccountRootPrincipal(),
+    });
 
     // Layer that provides kubectl/helm binaries for cluster handlers
     const kubectlLayer = new KubectlV32Layer(this, 'kubectl');
@@ -39,11 +39,11 @@ export class EksStack extends cdk.Stack {
       vpc: props.vpc,
       securityGroup: props.clusterSecurityGroup,
       role: clusterRole,
-    //   mastersRole: mastersRole,
+      mastersRole: mastersRole,
       kubectlLayer,
       outputClusterName: true,
       outputConfigCommand: true,
-    //   outputMastersRoleArn: true,
+      outputMastersRoleArn: true,
       endpointAccess: eks.EndpointAccess.PUBLIC_AND_PRIVATE,
       defaultProfile: {
         fargateProfileName: 'fincra-fargate',
