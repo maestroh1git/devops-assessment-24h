@@ -12,6 +12,9 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: fincra-app
+  EKS_CLUSTER_NAME: fincra-cluster
+  KUBECTL_VERSION: v1.32.0
+  KUSTOMIZE_VERSION: v5.2.1
 
 jobs:
   # Job 1: Lint and Test Application Code

@@ -2,7 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as eks from 'aws-cdk-lib/aws-eks';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { KubectlV32Layer } from '@aws-cdk/lambda-layer-kubectl-v32';
 import { Construct } from 'constructs';
 
 interface EksStackProps extends cdk.StackProps {
@@ -16,7 +16,7 @@ export class EksStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: EksStackProps) {
     super(scope, id, props);
 
-    // Create IAM role for EKS cluster
+    // Create IAM role for EKS cluster (service role)
     const clusterRole = new iam.Role(this, 'FincraClusterRole', {
       assumedBy: new iam.ServicePrincipal('eks.amazonaws.com'),
       managedPolicies: [
@@ -24,37 +24,34 @@ export class EksStack extends cdk.Stack {
       ],
     });
 
+    // // Create IAM role for cluster admin access (masters role)
+    // const mastersRole = new iam.Role(this, 'ClusterAdminRole', {
+    //   assumedBy: new iam.AccountRootPrincipal(),
+    // });
+
     // Layer that provides kubectl/helm binaries for cluster handlers
-    const kubectlLayer = lambda.LayerVersion.fromLayerVersionArn(
-      this,
-      'FincraKubectlLayer',
-      cdk.Stack.of(this).formatArn({
-        service: 'lambda',
-        region: this.region,
-        account: '602401143452',
-        resource: 'layer',
-        resourceName: 'eks-kubectl:10',
-      }),
-    );
+    const kubectlLayer = new KubectlV32Layer(this, 'kubectl');
 
     // Create EKS Fargate Cluster
     this.cluster = new eks.FargateCluster(this, 'FincraCluster', {
-      clusterName: 'fincra-cluster',
-      version: eks.KubernetesVersion.V1_28,
+      clusterName: 'fincra-cluster_v1',
+      version: eks.KubernetesVersion.V1_32, 
       vpc: props.vpc,
-      vpcSubnets: [{ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }],
       securityGroup: props.clusterSecurityGroup,
       role: clusterRole,
+    //   mastersRole: mastersRole,
       kubectlLayer,
       outputClusterName: true,
       outputConfigCommand: true,
+    //   outputMastersRoleArn: true,
       endpointAccess: eks.EndpointAccess.PUBLIC_AND_PRIVATE,
       defaultProfile: {
-        fargateProfileName: 'default-profile',
+        fargateProfileName: 'fincra-fargate',
         selectors: [
           { namespace: 'default' },
           { namespace: 'kube-system' },
         ],
+        subnetSelection: { subnets: props.vpc.privateSubnets },
       },
     });
 
