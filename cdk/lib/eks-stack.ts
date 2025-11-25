@@ -21,12 +21,19 @@ export class EksStack extends cdk.Stack {
       assumedBy: new iam.ServicePrincipal('eks.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSClusterPolicy'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSVPCResourceController'),
       ],
     });
 
     // Create IAM role for cluster admin access (masters role)
     const mastersRole = new iam.Role(this, 'ClusterAdminRole', {
       assumedBy: new iam.AccountRootPrincipal(),
+      roleName: 'FincraEKSAdminRole',
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSClusterPolicy'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSVPCResourceController'),
+      ],
     });
 
     // Layer that provides kubectl/helm binaries for cluster handlers
@@ -53,6 +60,12 @@ export class EksStack extends cdk.Stack {
         ],
         subnetSelection: { subnets: props.vpc.privateSubnets },
       },
+    });
+
+    // Add admin user to the cluster admins
+    const adminUser = iam.User.fromUserName(this, 'MaestrohUser', 'maestroh');
+    this.cluster.awsAuth.addUserMapping(adminUser, {
+      groups: ['system:masters']
     });
 
     // Add additional Fargate profile for application namespace
@@ -121,6 +134,12 @@ export class EksStack extends cdk.Stack {
       description: 'IAM role ARN for kubectl access',
       exportName: 'FincraKubectlRoleArn',
     });
+
+    new cdk.CfnOutput(this, 'MastersRoleArn', {
+        value: mastersRole.roleArn,
+        description: 'IAM role ARN for cluster admin access',
+        exportName: 'FincraMastersRoleArn',
+      });qqqqqq
 
     new cdk.CfnOutput(this, 'ConfigCommand', {
       value: `aws eks update-kubeconfig --name ${this.cluster.clusterName} --region ${this.region}`,
